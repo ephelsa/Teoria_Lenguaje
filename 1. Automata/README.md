@@ -16,4 +16,4 @@ Integrantes:
 
 Estado actual
 --------------
-[[https://github.com/ephelsa/Teoria_Lenguaje/edit/master/1.%20Automata/images/estado_actual.png|alt=Estado_07082018]]
+![estado_07082018](https://github.com/ephelsa/Teoria_Lenguaje/edit/master/1.%20Automata/images/estado_actual.png)
