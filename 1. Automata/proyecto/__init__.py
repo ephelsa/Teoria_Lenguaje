@@ -16,7 +16,7 @@ automata = Automata(simbolos_entrada, estados, estado_inicial, estados_aceptacio
 
 
 
-#print(automata.simbolos_entrada)
-#print(automata.estados)
-#print(automata.estado_inicial)
-#print(automata.estados_aceptacion)
+#print("Entrada -->", automata.simbolos_entrada)
+#print("Estados -->", automata.estados)
+#print("Inicial -->", automata.estado_inicial)
+#print("Aceptacion -->", automata.estados_aceptacion)
