@@ -36,14 +36,16 @@ class Automata:
         self.__filas_transiciones = []
         for index in range(len(estados)):
             self.__filas_transiciones.append(tokenizerTransiciones(input("Fila[{0}] >> ".format(index + 1))))
-
+            self.__filas_transiciones[-1].update({'aceptacion' : self.__filas_transiciones[-1]['estado_actual'] in self.estados_aceptacion})
+            
+        # Validamos si el automata es valido.
         if self.__automataValido():
             print(self.tipoAutomata())
             print('Sin simplificar =>')
             self.tabla_transiciones.mostrar()
-            
+            # Se intenta simplificar si se puede.
             self.__simplificarAutomata()
-
+            # Se valida el automata simplificado.
             if self.__automataValido():
                 print('Simplificado =>')
                 self.tabla_transiciones.mostrar()
@@ -80,7 +82,7 @@ class Automata:
                     estados_existentes[i_estado] = True
 
                 ################# Total de simbolos por fila
-                if len(self.simbolos_entrada) != (len(fila) - 1):
+                if len(self.simbolos_entrada) != (len(fila) - 2):
                     sys.exit("La entrada #{0} no posee todos los simbolos de entrada.".format(str(i_estado + 1)))
 
                 ################# Estado inicial
@@ -103,10 +105,14 @@ class Automata:
                 if fila[entrada]:
                     entradas_existentes[i_entrada] = True
 
-                    for estado_entrada in fila[entrada]:
-                        if not estado_entrada in self.estados:
-                            sys.exit("La transicion '{0}' del estado '{1}' con la entrada '{2}' es invalido.".format(str(estado_entrada), str(fila['estado_actual']), str(entrada)))
-
+                    if not type(fila[entrada]) == str:
+                        for estado_entrada in fila[entrada]:
+                            if not estado_entrada in self.estados:
+                                sys.exit("La transicion '{0}' del estado '{1}' con la entrada '{2}' es invalido.".format(str(estado_entrada), str(fila['estado_actual']), str(entrada)))
+                    else:
+                        if not fila[entrada] in self.estados:
+                            sys.exit("La transicion '{0}' del estado '{1}' con la entrada '{2}' es invalido.".format(str(fila[entrada]), str(fila['estado_actual']), str(entrada)))
+               
                     fila_entradas.update({entrada : fila[entrada]})
                     
                     #### Validamos que tipo de automata es.
@@ -114,7 +120,7 @@ class Automata:
                         self.__es_deterministico = len(fila[entrada]) == 1
 
             #### Insertamos la fila en la tabla de transiciones
-            self.tabla_transiciones.insertarFila(fila['estado_actual'], fila_entradas, fila['estado_actual'] in self.estados_aceptacion)
+            self.tabla_transiciones.insertarFila(fila['estado_actual'], fila_entradas, fila['aceptacion'])
             ########################## Validamos que los simbolos de entrada existen en la fila
             for (i_existente, existente) in enumerate(entradas_existentes):
                 if not existente:
@@ -152,6 +158,7 @@ class Automata:
 
     def __simplificarAutomata(self):
         self.__eliminarEstadosRaros()
+        self.__metodoParticiones()
 
     '''
     Elimina los Estados Extranos. Esos estados a los que no se llega mediante ninguna transicion.
@@ -193,18 +200,176 @@ class Automata:
                     # Tambien eliminamos ese estado.
                     self.estados.pop(self.estados.index(fila['estado_actual']))
                     # Si se tienen varios estados de aceptacion y uno de ellos es extrano, lo quitamos.
-                    self.estados_aceptacion.pop(self.estados_aceptacion.index(fila['estado_actual']))
+                    if fila['estado_actual'] in self.estados_aceptacion:
+                        self.estados_aceptacion.pop(self.estados_aceptacion.index(fila['estado_actual']))
 
-        print("Estados validos ->", str(estados_validos))
+    def __metodoParticiones(self):
+        separador = ''     
+
+        ###################
+        def buscarGrupo(grupo):
+            def pertenece(index, item_pos, relaciones, comparar):
+                for (index_relacion, relacion) in enumerate(relaciones):
+                    for (index_item, item) in enumerate(relacion):
+                        if index_relacion != index and item_pos == index_item:
+                            return item == comparar
+                        
+            ####################
+            def unirEquivalentes(particiones):
+                nuevas_filas_transiciones = []
+                estados_actuales = []
+                transiciones_totales = []
+                                
+                a_unir = (list(filter(lambda x: x['pertenece'], particiones)))
+                independientes = (list(filter(lambda x: not x['pertenece'], particiones)))
+                
+                # Unidos
+                if len(a_unir):
+                    transiciones = []
+                    for elemento in a_unir:
+                        estados_actuales.append(elemento['estado_actual'])
+        
+                        for entrada in self.simbolos_entrada:
+                            transiciones.append({entrada: elemento[entrada]})
+        
+                    transiciones_simbolos = {}
+                    for entrada in self.simbolos_entrada:
+                        transiciones_por_simbolo = []
+                        for (index_transicion, transicion) in enumerate(transiciones):
+                            if entrada in transicion.keys():
+                                transiciones_por_simbolo.append(transicion[entrada])
+                        transiciones_simbolos.update({entrada: separador.join(sorted(set(transiciones_por_simbolo)))})
+        
+                    for fila in self.__filas_transiciones:
+                        if len(a_unir):
+                            if a_unir[0]['estado_actual'] == fila['estado_actual']:
+                                aceptacion = fila['aceptacion']
+                                break
+        
+                    nuevas_filas_transiciones.append({'estado_actual' : separador.join(estados_actuales), 'aceptacion' : aceptacion})
+                    nuevas_filas_transiciones[-1].update(transiciones_simbolos)
+        
+                    
+                #Independientes
+                for independiente in independientes:
+                    nueva_fila = {'estado_actual' : independiente['estado_actual']}
+                    for entrada in self.simbolos_entrada:
+                        nueva_fila.update({entrada : independiente[entrada]})
+                    for fila in self.__filas_transiciones:
+                        if independiente['estado_actual'] == fila['estado_actual']:
+                            nueva_fila.update({'aceptacion' : fila['aceptacion']})
+                            
+                    nuevas_filas_transiciones.append(nueva_fila)
+                    
+                
+                return nuevas_filas_transiciones
+                
+            ##################
+            particiones = []
+            relaciones = []
+            buscar = list(map(lambda y : y['estado_actual'], grupo))
+        
+            for entrada in self.simbolos_entrada:
+                filas_agrupadas = list(map(lambda x : list(map(lambda y : 
+                                                        {'estado_actual': x['estado_actual'], entrada: y, 
+                                                        'pertenece': y in buscar,}, x[entrada]))[0], grupo))
+        
+                
+                particiones.append(filas_agrupadas)
+                
+                
+            for particion in particiones:
+                relaciones.append(list(map(lambda x: x['pertenece'], particion)))
+        
+            nuevas_particiones = []
+            for (index_relacion, relacion) in enumerate(relaciones[0: -1]):
+                for (index_item, item) in enumerate(relacion):
+                    for particion in particiones:
+                        particion[index_item]['pertenece'] = pertenece(index_relacion, index_item, relaciones, item)
+                        if len(nuevas_particiones) > index_item:
+                            if nuevas_particiones[index_item]['estado_actual'] == particion[index_item]['estado_actual']:
+                                for entrada in self.simbolos_entrada:
+                                    if entrada in particion[index_item].keys():
+                                        nuevas_particiones[index_item].update({entrada: particion[index_item][entrada]})
+                        else:
+                            nuevas_particiones.append(particion[index_item])
+            particiones = nuevas_particiones
+            
+            return unirEquivalentes(particiones)
+            
+        aceptados = list(filter(lambda x : x['aceptacion'], self.__filas_transiciones))
+        no_aceptados = list(filter(lambda x : not x['aceptacion'], self.__filas_transiciones))
+        
+        nuevas_filas_estado = buscarGrupo(aceptados) + buscarGrupo(no_aceptados)
+        
+        
+        for nueva_fila in nuevas_filas_estado:
+            for fila in nuevas_filas_estado:
+                for entrada in self.simbolos_entrada:
+                    if fila[entrada] in nueva_fila['estado_actual']:
+                        fila[entrada] = nueva_fila['estado_actual']
+                        
+                    if fila['estado_actual'] in nueva_fila['estado_actual']:
+                        fila['estado_actual'] = nueva_fila['estado_actual']
+                        
+                    if fila['estado_actual'] in nueva_fila[entrada]:
+                        fila['estado_actual'] = nueva_fila[entrada]
+
+                    if separador.join(sorted(list(fila[entrada]) + list(set(nueva_fila['estado_actual']) - set(fila[entrada])))) == nueva_fila['estado_actual']:
+                        fila[entrada] = nueva_fila['estado_actual']
+
+
+            for (index_aceptacion, aceptacion) in enumerate(self.estados_aceptacion):
+                if aceptacion in nueva_fila['estado_actual']:
+                    self.estados_aceptacion[index_aceptacion] = nueva_fila['estado_actual']
+                
+            if self.estado_inicial in nueva_fila['estado_actual']:
+                self.estado_inicial = nueva_fila['estado_actual']
+
+
+
+        filas_estado_sin_duplicados = nuevas_filas_estado
+
+        for (index_nueva, nueva_fila) in enumerate(nuevas_filas_estado):
+            for (index_duplicado, duplicado) in enumerate(nuevas_filas_estado):
+                if nueva_fila == duplicado and index_duplicado != index_nueva:
+                    filas_estado_sin_duplicados.pop(index_duplicado)
+
+        self.__filas_transiciones = filas_estado_sin_duplicados
+
+        estados = []
+        for fila in filas_estado_sin_duplicados:
+            estados.append(fila['estado_actual'])
+
+        self.estados = estados
 
 
     '''
+    #Ejemplo
+    0, a=0, b=3
+    1, a=2, b=5
+    2, a=2, b=7
+    3, a=6, b=7
+    4, a=1, b=6
+    5, a=6, b=5
+    6, a=6, b=3
+    7, a=6, b=3
+
+    ini: 0
+    acep: 4,6
+
     # ND
     a, 0=a;c, 1=c
     b, 0=c, 1=b
     c, 0=b, 1=a;c
-    c, 0=b, 1=a;c
     d, 0=a;c, 1=d;b
+
+    # D
+    a, 0=a, 1=c
+    b, 0=c, 1=b
+    c, 0=b, 1=a
+    d, 0=a, 1=d
+
 
     # D
     a, 0=a, 1=b
@@ -277,7 +442,6 @@ class Automata:
             # Modificacion del estado incial.
             if self.estados_actuales[-1] == self.__estado_inicial:
                 self.__tabla_transiciones[-1], self.__tabla_transiciones[1] = self.__tabla_transiciones[1], self.__tabla_transiciones[-1]
-
 
         '''
         Permite obtener el total de transiciones que tiene el estado para X simbolo.
