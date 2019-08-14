@@ -42,9 +42,14 @@ class Automata:
         if self.__automataValido():
             print(self.tipoAutomata())
             print('Sin simplificar =>')
+            #print('Particiones ->', self.__filas_transiciones)
             self.tabla_transiciones.mostrar()
-            # Se intenta simplificar si se puede.
-            self.__simplificarAutomata()
+            if self.__es_deterministico:
+                # Se intenta simplificar si se puede.
+                self.__simplificarAutomata()
+            else:
+                self.__aDeterministico()
+                self.__simplificarAutomata()
             # Se valida el automata simplificado.
             if self.__automataValido():
                 print('Simplificado =>')
@@ -156,9 +161,14 @@ class Automata:
     def tipoAutomata(self):
         return "Deterministico" if self.__es_deterministico else "No Deterministico"
 
+    def __aDeterministico(self):
+        pass
+
     def __simplificarAutomata(self):
         self.__eliminarEstadosRaros()
         self.__metodoParticiones()
+        self.tabla_transiciones = self.TablaTransiciones(self.simbolos_entrada, self.estado_inicial)
+
 
     '''
     Elimina los Estados Extranos. Esos estados a los que no se llega mediante ninguna transicion.
@@ -202,6 +212,7 @@ class Automata:
                     # Si se tienen varios estados de aceptacion y uno de ellos es extrano, lo quitamos.
                     if fila['estado_actual'] in self.estados_aceptacion:
                         self.estados_aceptacion.pop(self.estados_aceptacion.index(fila['estado_actual']))
+
 
     def __metodoParticiones(self):
         separador = ''     
@@ -346,6 +357,7 @@ class Automata:
 
     '''
     #Ejemplo
+    #D
     0, a=0, b=3
     1, a=2, b=5
     2, a=2, b=7
@@ -355,8 +367,20 @@ class Automata:
     6, a=6, b=3
     7, a=6, b=3
 
-    ini: 0
-    acep: 4,6
+    0
+    4,6
+    a,b
+    0,1,2,3,4,5,6,7
+
+    #ND
+    0,1
+    A,B,C,D
+    A
+    B,C
+    A, 0=B, 1=C;D
+    B, 0=A, 1=B
+    C, 0=C, 1=D
+    D, 0=A, 1=C
 
     # ND
     a, 0=a;c, 1=c
