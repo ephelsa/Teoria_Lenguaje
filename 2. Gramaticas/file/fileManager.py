@@ -21,7 +21,7 @@ class FileManager:
             def validateLine(content):
                 whitoutSpaces = re.sub(r'\s', '', content)
 
-                pattern = re.compile(r'(^<[a-z]+>->(([a-z0-9]+|(<[a-z]+>)+)+|\/{1})$)', re.I)
+                pattern = re.compile(r'(^<[a-z0-9]+>->(([a-z0-9]+|(<[a-z0-9]+>)+)+|\/{1})$)', re.I)
                 result = pattern.match(whitoutSpaces)
 
                 try:
