@@ -28,14 +28,15 @@ class Gramatic():
         self.gramaticSet = gramaticSet
 
         # Testing the null set.
-        self.nullSet()
+        print('N and null productions:', self.nullSet())
+        print('Firts set', self.firstSet())
 
     def nullSet(self):
         # Patter to catch null productions.
         nullPattern = re.compile(r'/')
 
         # Null group.
-        self._nullSet = []
+        setOfNulls = []
 
         # First, get the 'easy' null productions.
         for (index, row) in enumerate(self.gramaticSet):
@@ -44,14 +45,14 @@ class Gramatic():
 
                 # Store the null production and null non-terminal.
                 # Solved: 1 and 2.
-                self._nullSet.append({'pos': index, 'prod': leftSide})
+                setOfNulls.append({'pos': index, 'prod': leftSide})
 
-        print('Explicit ->', end='')
-        pprint(self._nullSet)
+        #print('Explicit ->', end='')
+        #pprint(setOfNulls)
 
         # Second, get implicit null productions.
         # Get the N nulls set.
-        nullProductions = list(map(lambda x: x['prod'], self._nullSet))
+        nullProductions = list(map(lambda x: x['prod'], setOfNulls))
         for (index, row) in enumerate(self.gramaticSet):
             if not re.findall(nullPattern, row):    # Get non null.
                 leftSide = row[0: str(row).find('->')]  # Used to be stored in the set.
@@ -69,13 +70,79 @@ class Gramatic():
                     
                     # Store if we found a null production.
                     if nullNonTerminal:
-                        self._nullSet.append({'pos': index, 'prod': leftSide})
+                        setOfNulls.append({'pos': index, 'prod': leftSide})
 
-        print('Complete ->', end='')
-        pprint(self._nullSet)                    
+        #print('Complete ->', end='')
+        #pprint(setOfNulls)      
+
+        return setOfNulls              
+
+    def nonTerminal(self):
+        nonTerminalSet = []
+
+        for prod in self.gramaticSet:
+            leftSide = prod[0: str(prod).find('->')]  # Get the left side.
+
+            nonTerminalSet.append(leftSide)
+
+        return list(set(nonTerminalSet)) 
 
     def firstSet(self):
-        pass
+        # Nonterminals
+        nonTerminalSet = self.nonTerminal()
+
+        # Regex to get easily.
+        firstExplicitPattern = re.compile(r'^[a-z0-9]+', re.I)
+        firstImplicitPatter = re.compile(r'^(<[a-z0-9]>)+[a-z0-9]*', re.I)
+
+        # Firsts group.
+        setOfFirsts = {}
+
+        # First, explicit terminals.
+        for nonTerminal in nonTerminalSet:
+            for prod in self.gramaticSet:
+                leftSide = prod[0: str(prod).find('->')]
+                rightSide = prod[str(prod).find('->') + 2:]   # Get the rigth side of the prod.
+                rightSide = re.match(firstExplicitPattern, rightSide)
+
+
+                if leftSide == nonTerminal and rightSide:
+                    setOfFirsts[leftSide] = [rightSide.group()]
+
+        #print('Before', setOfFirsts)
+        
+        for nonTerminal in nonTerminalSet:
+            for prod in self.gramaticSet:
+                leftSide = prod[0: str(prod).find('->')]
+                rightSide = prod[str(prod).find('->') + 2:]   # Get the rigth side of the prod.
+                rightSide = re.match(firstImplicitPatter, rightSide)
+
+
+                if leftSide == nonTerminal and rightSide:
+                    rightSide = rightSide.group() 
+         
+
+                    matched = re.match(r'^(<[a-zA-Z0-9]>)+', rightSide).group()
+                    lastTerminal = re.match(r'^(<[a-zA-Z0-9]>)*([a-zA-Z0-9]+)+', rightSide)
+
+
+                    if matched in setOfFirsts:
+                        setOfFirsts[leftSide].extend(setOfFirsts[matched])
+
+                        if lastTerminal:
+                            setOfFirsts[leftSide].append(lastTerminal.groups()[1])
+                    else:
+                        for (key, _) in setOfFirsts.items():
+                            if key in matched:
+                                setOfFirsts[leftSide].extend(setOfFirsts[key])
+        
+        for (key, _) in setOfFirsts.items():
+            setOfFirsts[key] = list(set(setOfFirsts[key]))
+
+
+        #print('After', setOfFirsts)
+
+        return setOfFirsts
 
     def firstProd(self):
         pass
