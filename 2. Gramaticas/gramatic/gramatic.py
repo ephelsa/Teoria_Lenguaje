@@ -30,6 +30,7 @@ class Gramatic():
         # Testing the null set.
         print('N and null productions:', self.nullSet())
         print('Firts set', self.firstSet())
+        print('Firsts set per Production', self.firstProd())
 
     def nullSet(self):
         # Patter to catch null productions.
@@ -145,7 +146,43 @@ class Gramatic():
         return setOfFirsts
 
     def firstProd(self):
-        pass
+        setOfFirsts = self.firstSet()
+        setOfFirstsProductions = []
+
+        for prod in self.gramaticSet:
+            # Regex
+            rightSide = prod[str(prod).find('->') + 2:]   # Get the rigth side of the prod.
+            lastTerminal = re.match(r'^(<[a-zA-Z0-9]>)*([a-zA-Z0-9]+)+', rightSide)
+            nonTerminal = re.match(r'^(<[a-zA-Z0-9]>)+', rightSide)
+
+            # To insert
+            itemsPerProduction = []
+            
+            if lastTerminal is not None:
+                matched = re.match(r'^(<[a-zA-Z0-9]>)+', lastTerminal.group())
+                terminal = re.match(r'^([a-zA-Z0-9])+', lastTerminal.group())
+
+                if matched:
+                    item = lastTerminal.group().replace(matched.group(), '')
+                    itemsPerProduction.append(item)
+
+                    for (key, nonTerminalFirst) in setOfFirsts.items():
+                        if key in matched.group():
+                            itemsPerProduction.extend(nonTerminalFirst)
+                elif terminal:
+                    itemsPerProduction.append(terminal.group())
+
+            elif nonTerminal:
+                for (key, nonTerminalFirst) in setOfFirsts.items():
+                    if key in nonTerminal.group():
+                        itemsPerProduction.extend(nonTerminalFirst)
+                        
+
+
+            setOfFirstsProductions.append(itemsPerProduction)
+
+            
+        return setOfFirstsProductions
 
     def nextSet(self):
         pass
