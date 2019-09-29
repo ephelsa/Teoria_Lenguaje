@@ -11,3 +11,5 @@ Integrantes:
 Estado actual
 --------------
 ![estado_07082018](images/current_status.png)
+
+Gramática en _test.gr_

@@ -29,8 +29,14 @@ class Gramatic():
         # Gramatic set to work on it.
         self.gramaticSet = gramaticSet
 
-        print('Conjunto de selección: ')
-        pprint(self.selectedSet())
+        #print('Conjunto de selección: ')
+        #pprint(self.selectedSet())
+        #print('Nulls ->', self.nullSet())
+        #print('First ->', self.firstSet())
+        #print('First prod ->', self.firstProd())
+        #print('Next ->', self.nextSet())
+
+        self.showSelectedSet()
 
     def nullSet(self):
         # Patter to catch null productions.
@@ -53,6 +59,7 @@ class Gramatic():
 
         # Second, get implicit null productions.
         # Get the N nulls set.
+        
         nullProductions = list(map(lambda x: x['prod'], setOfNulls))
         for (index, row) in enumerate(self.gramaticSet):
             if not re.findall(nullPattern, row):    # Get non null.
@@ -63,16 +70,20 @@ class Gramatic():
                 if rightSide: # Found non-terminals.
                     rightSide = rightSide.group()  
 
+
+                    nonTerminalGroup = (re.sub('>', '> ', rightSide)).split(' ')[:-1]
                     nullNonTerminal = True
-                    for nullProduction in nullProductions:
-                        if nullProduction not in rightSide:     # If isn't null
+                    
+                    for data in nonTerminalGroup:
+                        if data not in nullProductions:     # If isn't null                            
                             nullNonTerminal = False             # changes the value to not be stored.
                             break
                     
+                    #exit(0)
                     # Store if we found a null production.
                     if nullNonTerminal:
                         setOfNulls.append({'pos': index, 'prod': leftSide})
-
+        
         #print('Complete ->', end='')
         #pprint(setOfNulls)      
 
@@ -111,6 +122,8 @@ class Gramatic():
                     setOfFirsts[leftSide] = [rightSide.group()]
 
         #print('Before', setOfFirsts)
+
+        nullNonTerminals = list(map(lambda x: x['prod'], self.nullSet()))
         
         for nonTerminal in nonTerminalSet:
             for prod in self.gramaticSet:
@@ -133,10 +146,24 @@ class Gramatic():
                         if lastTerminal:
                             setOfFirsts[leftSide].append(lastTerminal.groups()[1])
                     else:
+                        noNull = False
+                        nonTerminalGroup = (re.sub('>', '> ', matched)).split(' ')[:-1]
+
+                        for nonTerminal in nonTerminalGroup:
+                            if nonTerminal in nullNonTerminals and not noNull:
+                                setOfFirsts[leftSide].extend(setOfFirsts[nonTerminal])
+                            else:
+                                noNull = True
+                        '''
                         for (key, _) in setOfFirsts.items():
-                            if key in matched:
+                            if key in matched and key in nullNonTerminals and not noNull:                                
+                                print('EXTENDED ->', key, matched, setOfFirsts[key])
+
                                 setOfFirsts[leftSide].extend(setOfFirsts[key])
-        
+                            else:
+                                noNull = True
+                        '''
+        ## No 
         for (key, _) in setOfFirsts.items():
             setOfFirsts[key] = list(set(setOfFirsts[key]))
 
@@ -148,6 +175,7 @@ class Gramatic():
     def firstProd(self):
         setOfFirsts = self.firstSet()
         setOfFirstsProductions = []
+        nullNonTerminals = list(map(lambda x: x['prod'], self.nullSet()))
 
         for prod in self.gramaticSet:
             # Regex
@@ -166,6 +194,7 @@ class Gramatic():
                     item = lastTerminal.group().replace(matched.group(), '')
                     itemsPerProduction.append(item)
 
+
                     for (key, nonTerminalFirst) in setOfFirsts.items():
                         if key in matched.group():
                             itemsPerProduction.extend(nonTerminalFirst)
@@ -173,9 +202,19 @@ class Gramatic():
                     itemsPerProduction.append(terminal.group())
 
             elif nonTerminal:
-                for (key, nonTerminalFirst) in setOfFirsts.items():
-                    if key in nonTerminal.group():
-                        itemsPerProduction.extend(nonTerminalFirst)
+
+                isNull = False 
+                nonTerminalGroup = (re.sub('>', '> ', nonTerminal.group())).split(' ')[:-1]
+                
+                for element in nonTerminalGroup:
+                    if element in nullNonTerminals and not isNull:
+                        itemsPerProduction.extend(setOfFirsts[element])
+                    else:
+                        isNull = True
+                
+                #for (key, nonTerminalFirst) in setOfFirsts.items():
+                #    if key in nonTerminal.group():
+                #        itemsPerProduction.extend(nonTerminalFirst)
                         
 
 
@@ -270,21 +309,25 @@ class Gramatic():
                             if findInNextFounds(leftSide) is not -1:
                                 insertNextFound(nextData['non_terminal'], nextFounds[findInNextFounds(leftSide)])
                             else:
-                                nextFounds.append({leftSide: firstsGroup[nextData['next']]})
+                                nextArr = (re.sub('>', '> ', nextData['next'])).split(' ')[:-1]
+
+                                for data in nextArr:
+                                    nextFounds.append({leftSide: firstsGroup[data]})
 
                         
-                            
                     elif next2Terminal:
                         if findInNextFounds(leftSide) is not -1:
                             insertNextFound(leftSide, next2Terminal.group())
                         else:
                             nextFounds.append({leftSide: [next2Terminal.group()]})
 
+
         newNextFounds = {}
         for data in nextFounds:
             newNextFounds.update(data)
         nextFounds = newNextFounds
 
+        #print('toSeekAfter', toSeekAfter, 'nextFounds', nextFounds)
 
         for seek in toSeekAfter:
             if seek['to_seek'] in nextFounds and seek['nexts_of'] in nextFounds:
@@ -297,6 +340,8 @@ class Gramatic():
 
             nextFounds[seek['to_seek']] = list(set(nextFounds[seek['to_seek']]))
 
+        #print('nextFounds', nextFounds)
+        #exit(0)
 
         return nextFounds
 
@@ -332,9 +377,16 @@ class Gramatic():
 
         # Order
         for selected in setOfSelecteds:
+            setOfSelecteds[selected] = list(set(setOfSelecteds[selected]))
             setOfSelecteds[selected] = sorted(setOfSelecteds[selected])
 
         return setOfSelecteds
 
     def gramaticType(self):
         return "Not created yet"
+    
+    def showSelectedSet(self):
+        setOfSelecteds = self.selectedSet()
+
+        for prodIndex in setOfSelecteds:
+            print(str(prodIndex + 1), '->', setOfSelecteds[prodIndex])

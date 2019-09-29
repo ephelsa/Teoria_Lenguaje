@@ -8,13 +8,15 @@ class FileManager:
 
         ## File extension verification.
         def verifyFileExtension():
-            pattern = re.compile(r'^[a-z]+[\.{1}]gr$', re.IGNORECASE)
+            pattern = re.compile(r'^[\S]+[\.{1}]gr$', re.IGNORECASE)
             result = pattern.match(self.fileName)
 
             try:
                 result.group()
             except:
                 print('Invalid file extension.')
+                exit(1)
+
             
         ## Open file to read
         def openFile():
