@@ -29,12 +29,8 @@ class Gramatic():
         # Gramatic set to work on it.
         self.gramaticSet = gramaticSet
 
-        # Testing the null set.
-        print('N and null productions:', self.nullSet())
-        print('Firts set', self.firstSet())
-        print('Firsts set per Production', self.firstProd())
-
-        pprint(self.nextSet())
+        print('Conjunto de selección: ')
+        pprint(self.selectedSet())
 
     def nullSet(self):
         # Patter to catch null productions.
@@ -251,7 +247,7 @@ class Gramatic():
 
                 for nextData in nextsArr:
                     next2NonTerminal = re.match(re.compile(r'^(<[a-z0-9]+>)+', re.I), nextData['next'])
-                    next2Terminal = re.match(re.compile(r'^([a-z0-9]+)+', re.I), nextData['next'])
+                    next2Terminal = re.match(re.compile(r'^([a-z0-9]+)', re.I), nextData['next'])
 
 
                     #print(leftSide, '->', nextData)
@@ -305,7 +301,40 @@ class Gramatic():
         return nextFounds
 
     def selectedSet(self):
-        pass
+        setOfNullsPack = self.nullSet()
+        setOfFirstsProd = self.firstProd()
+        setOfNexts = self.nextSet() 
+
+        setOfSelecteds = {}
+
+        for (indexProd, prod) in enumerate(self.gramaticSet):
+            leftSide = prod[0: str(prod).find('->')]  # Get the left side.
+            rightSide = prod[str(prod).find('->') + 2:]   # Get the rigth side of the prod.
+
+            startsNonTerminal = re.match(re.compile(r'^(<[a-z0-9]+>)+', re.I), rightSide)
+            startsTerminal = re.match(re.compile(r'^([a-z0-9]+)', re.I), rightSide)
+            if startsNonTerminal:
+                isNull = False
+                for nullData in setOfNullsPack:
+                    if nullData['pos'] == indexProd:
+                        setOfSelecteds.update({indexProd: setOfFirstsProd[indexProd] + setOfNexts[leftSide]})
+                        setOfSelecteds[indexProd] = list(set(setOfSelecteds[indexProd]))
+                        isNull = True
+
+                if not isNull:
+                    setOfSelecteds.update({indexProd: setOfFirstsProd[indexProd]})
+
+            elif startsTerminal:
+                setOfSelecteds.update({indexProd: setOfFirstsProd[indexProd]})
+
+            else:
+                setOfSelecteds.update({indexProd: setOfNexts[leftSide]})
+
+        # Order
+        for selected in setOfSelecteds:
+            setOfSelecteds[selected] = sorted(setOfSelecteds[selected])
+
+        return setOfSelecteds
 
     def gramaticType(self):
-        pass
+        return "Not created yet"
